@@ -123,13 +123,71 @@ pv = dim(Xv)[2]
 nparams = (pu * m) + (pv * m) + 2 * m  + 2 * m * 2 + 2 + 2 + 1
 theta = runif(nparams, -1, 1)
 
-# Wrapper function to train NN with nlm
-obj_train = function(theta_init) {
-  result = neural_net(Xtrain_u, Xtrain_v, 4, theta_init, Ytrain, 0.05)
-  return(result$E)
+nu_grid = exp(seq(-7,-0,length
+            =20))
+# Do grid search on values of nu_grid
+errors = rep(1, length(nu_grid))
+for (i in 1:length(nu_grid)){
+  nu = nu_grid[i]
+  
+  obj_train = function(theta_init) {
+    result = neural_net(Xtrain_u, Xtrain_v, 4, theta_init, Ytrain, nu)
+    return(result$E)
+  }
+  cat("Training network for nu =", nu, "\n")
+  trained = nlm(obj_train,theta)
+  valid_result = neural_net(Xvalid_u, Xvalid_v, 4, trained$estimate, Yvalid, nu)
+
+  cat("Finished validating nu =", nu, "\n")
+  errors[i] = valid_result$E  
+}
+lines(errors ~ log(nu_grid), pch=1, col="firebrick4")
+best_index = which.min(errors)
+best_nu = nu_grid[best_index]
+
+
+
+# Just in case we need cross validation
+set.seed(2026)
+cross_validation = function(Xu, Xv, folds, nu){
+  total_valid_error = 0
+  N = dim(X)[1]
+  fold_size = floor(N/5)
+  for (i in 1:folds){
+    if (i != folds){
+      valid_indices = (i-1) * fold_size : i * fold_size
+    }
+    else{
+      # Handle last trailing values
+      valid_indices= (i-1) * fold_size:-1
+    }
+    Xu_train = Xu[-valid_indices, ]
+    Xu_valid = Xu[valid_indices,]
+    Xv_train = Xv[-valid_indices, ]
+    Xv_valid = Xv[valid_indices,]
+    Y_train = as.matrix(Y[-valid_indices])
+    Y_valid = as.matrix(Y[valid_indices])
+    
+    nparams = (pu * m) + (pv * m) + 2 * m  + 2 * m * 2 + 2 + 2 + 1
+    theta = runif(nparams, -1, 1)
+    
+    # Wrapper function to train NN with nlm
+    obj_train = function(theta_init) {
+      result = neural_net(Xu_train, Xv_train, 4, theta_init, Y_train, nu)
+      return(result$E)
+    }
+    result_fold = nlm(neural_net, theta)
+    total_valid_error = neural_net(Xu_valid, Xv_valid, 4, result_fold$esimate, Y_valid, nu)
+    
+    return (total_valid_error/folds)
+  }
+  
+  
 }
 
+# 80-20 splits mean we do 5 folds cross validation
+result = nlm(obj_train, theta)
 
-nlm(obj_train, theta)
+
 
 
