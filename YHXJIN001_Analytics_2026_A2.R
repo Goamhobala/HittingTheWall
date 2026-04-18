@@ -54,7 +54,8 @@ sig_out = function(a){
 
 obj = function(Y, Y_hat){
   epsilon = 1e-8 # to prevent log(0)
-  return (-(Y %*% log(Y_hat) + (1-Y) %*% log(1-Y_hat)))
+  Y_hat = pmax(pmin(Y_hat, 1-epsilon),epsilon)
+  return (sum(-(Y * log(t(Y_hat)) + (1-Y) * log(t(1-Y_hat)))))
 }
 
 neural_net = function(Xu, Xv, m, theta, Y, nu){
@@ -68,7 +69,7 @@ neural_net = function(Xu, Xv, m, theta, Y, nu){
   W1u = matrix(theta[index], pu, m)
 
   index = max(index) + 1:(pv*m)
-  W1v = matrix(1, pv, m)
+  W1v = matrix(theta[index], pv, m)
 
   W1 = as.matrix(bdiag(W1u, W1v))
 
@@ -78,7 +79,7 @@ neural_net = function(Xu, Xv, m, theta, Y, nu){
 
   
   index = max(index)+1:2
-  W3 = matrix(1, 2, 1)
+  W3 = matrix(theta[index], 2, 1)
 
   index = max(index) + 1:(m)
   b1u = matrix(theta[index], m, 1)
@@ -87,24 +88,21 @@ neural_net = function(Xu, Xv, m, theta, Y, nu){
   b1 = rbind(b1u, b1v)
   
   index = max(index) + 1:2
-  b2 = matrix(1, 2, 1)
+  b2 = matrix(theta[index], 2, 1)
   index = max(index) + 1:1
-  b3 = matrix(1, 1, 1)
+  b3 = matrix(theta[index], 1, 1)
   
   ones = matrix(1, N, 1)
   A0 = as.matrix(t(X))
-  print(dim(A0))
-  print(dim(W1))
-  
   A1 = sig(t(W1) %*% A0 + b1 %*% t(ones))
   A2 = sig(t(W2) %*% A1 + b2 %*% t(ones))
   z_out = t(W3) %*% A2 + b3 %*% t(ones)
   # Since this is a classification problem, we use logistic equation
   Y_hat = sig_out(z_out)
   pred = ifelse(Y_hat >= 0.5, 1, 0)
-  E = obj(Y, Y_hat)/N + (nu /N) * sum(W1^2) + sum(W2^2) + sum(W3^2)
+  E = obj(Y, Y_hat)/N + (nu /N) * (sum(W1^2) + sum(W2^2) + sum(W3^2))
   
-  return(list(A1, A2, E))
+  return(list(A1=A1, A2=A2, E=E))
 }
 
 set.seed(2026)
@@ -114,15 +112,24 @@ train_indices = sample(1:N, size=round(0.8*N))
 
 Xtrain_u = Xu[train_indices,]
 Xtrain_v = Xv[train_indices,]
-Ytrain = Y[train_indices]
+Ytrain = as.matrix(Y[train_indices])
 
 Xvalid_u = Xu[-train_indices,]
 Xvalid_v = Xv[-train_indices,]
-Yvalid = Y[-train_indices]
+Yvalid = as.matrix(Y[-train_indices])
 
 pu = dim(Xu)[2]
 pv = dim(Xv)[2]
 nparams = (pu * m) + (pv * m) + 2 * m  + 2 * m * 2 + 2 + 2 + 1
 theta = runif(nparams, -1, 1)
+
+# Wrapper function to train NN with nlm
+obj_train = function(theta_init) {
+  result = neural_net(Xtrain_u, Xtrain_v, 4, theta_init, Ytrain, 0.05)
+  return(result$E)
+}
+
+
+nlm(obj_train, theta)
 
 
