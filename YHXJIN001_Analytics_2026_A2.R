@@ -1,0 +1,128 @@
+rm(list=ls())
+library(Matrix)
+# EDA
+data = as.data.frame(read.table("HittingTheWall_2026.txt", header=TRUE))
+head(data)
+summary(data)
+# First we check for correlations
+pairs(Bombed ~ . , data=data, pch=16, col="hotpink")
+
+# Then we check for distribution of the data
+par(mfrow=c(2,2))
+hist(data$Carbs)
+hist(data$Fluid)
+hist(data$AveSpeed)
+boxplot(data)
+# From the summary and the boxplot, we see that the features have ranges that vary greatly.
+# This is bad for neural networks. We must thus standardise the data to make sure no variables
+# Dominate
+data_scaled = as.data.frame(scale(data))
+summary(data_scaled)
+par(mfrow = c(1, 1))
+
+softmax = function(Z_l){
+  # This fucntion takes in a q x N matrix, with z vector for each observation as columns
+  # Outputs a q x N probability matrix
+  
+  # We first calculatethe max value for each column
+  z_max = apply(Z_l, 2, max)
+  # turn the max matrix into a diagonal matrix
+  Z_max = diag(z_max)
+  # Apply exp to both Z_max and Z_l and then calculate exp(z_l - z_max) product
+  expZ_max = -exp(Z_max)
+  expZ_l = exp(Z_l)
+  expDiff = expZ_l %*% expZ_max
+  
+  # Get the denominators for softmax
+  Denominator = diag(1/colSums(expDiff))
+  
+  S = expDiff %*% Denominator
+  return(S)
+}
+Xu = cbind(data_scaled$AveSpeed, data_scaled$Sex)
+Xv = cbind(data_scaled$Carbs, data_scaled$Fluid)
+
+# We should not scale the response variable
+Y = cbind(data$Bombed)
+
+sig = function(A){
+  return(tanh(A))
+}
+sig_out = function(a){
+  return (1/(1+exp(-a)))
+}
+
+obj = function(Y, Y_hat){
+  epsilon = 1e-8 # to prevent log(0)
+  return (-(Y %*% log(Y_hat) + (1-Y) %*% log(1-Y_hat)))
+}
+
+neural_net = function(Xu, Xv, m, theta, Y, nu){
+  pu = dim(Xu)[2]
+  pv = dim(Xv)[2]
+  N = dim(Y)[1]
+  X = cbind(Xu, Xv)
+  # 2m part
+  
+  index = 1:(m*pu)
+  W1u = matrix(theta[index], pu, m)
+
+  index = max(index) + 1:(pv*m)
+  W1v = matrix(1, pv, m)
+
+  W1 = as.matrix(bdiag(W1u, W1v))
+
+  # 2 layer
+  index = max(index)+1:(2*m*2) 
+  W2 = matrix(theta[index], 2 * m, 2)
+
+  
+  index = max(index)+1:2
+  W3 = matrix(1, 2, 1)
+
+  index = max(index) + 1:(m)
+  b1u = matrix(theta[index], m, 1)
+  index = max(index) + 1:(m)
+  b1v = matrix(theta[index], m, 1)
+  b1 = rbind(b1u, b1v)
+  
+  index = max(index) + 1:2
+  b2 = matrix(1, 2, 1)
+  index = max(index) + 1:1
+  b3 = matrix(1, 1, 1)
+  
+  ones = matrix(1, N, 1)
+  A0 = as.matrix(t(X))
+  print(dim(A0))
+  print(dim(W1))
+  
+  A1 = sig(t(W1) %*% A0 + b1 %*% t(ones))
+  A2 = sig(t(W2) %*% A1 + b2 %*% t(ones))
+  z_out = t(W3) %*% A2 + b3 %*% t(ones)
+  # Since this is a classification problem, we use logistic equation
+  Y_hat = sig_out(z_out)
+  pred = ifelse(Y_hat >= 0.5, 1, 0)
+  E = obj(Y, Y_hat)/N + (nu /N) * sum(W1^2) + sum(W2^2) + sum(W3^2)
+  
+  return(list(A1, A2, E))
+}
+
+set.seed(2026)
+m = 4
+N = dim(Y)[1]
+train_indices = sample(1:N, size=round(0.8*N))
+
+Xtrain_u = Xu[train_indices,]
+Xtrain_v = Xv[train_indices,]
+Ytrain = Y[train_indices]
+
+Xvalid_u = Xu[-train_indices,]
+Xvalid_v = Xv[-train_indices,]
+Yvalid = Y[-train_indices]
+
+pu = dim(Xu)[2]
+pv = dim(Xv)[2]
+nparams = (pu * m) + (pv * m) + 2 * m  + 2 * m * 2 + 2 + 2 + 1
+theta = runif(nparams, -1, 1)
+
+

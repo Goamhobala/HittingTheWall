@@ -1,0 +1,165 @@
+
+\documentclass[12pt,halfline,a4paper,]{ouparticle}
+
+% Packages I think are necessary for basic Rmarkdown functionality
+\usepackage{hyperref}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{fancyvrb}
+\usepackage{framed}
+
+% Link coloring
+\hypersetup{breaklinks=true,
+            bookmarks=true,
+            pdfauthor={},
+            pdftitle={STA4026Z Supervised Learning Assignment}
+            }
+
+
+%% To allow better options for figure placement
+%\usepackage{float}
+
+% Packages that are supposedly required by OUP sty file
+\usepackage{amssymb, amsmath, geometry, amsfonts, verbatim, endnotes, setspace}
+
+% use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+
+% Macros for dealing with affiliations, footnotes, etc.
+\makeatletter
+\def\Newlabel#1#2#3{\expandafter\gdef\csname #1@#2\endcsname{#3}}
+
+\def\Ref#1#2{\@ifundefined{#1@#2}{???}{\csname #1@#2\endcsname}}
+
+\newcommand*\samethanks[1][\value{footnote}]{\footnotemark[#1]}
+
+\newcommand*\ifcounter[1]{%
+  \ifcsname c@#1\endcsname
+    \expandafter\@firstoftwo
+  \else
+    \expandafter\@secondoftwo
+  \fi
+}
+
+\newcommand*\thanksbycode[1]{%
+  \ifcounter{FNCT@#1}
+    {\samethanks[\value{FNCT@#1}]}
+    {\thanks{\Ref{FN}{#1}}\newcounter{FNCT@#1}\setcounter{FNCT@#1}{\value{footnote}}}
+}
+
+% Create labels for Addresses if the are given in Elsevier format
+
+% Create labels for Footnotes if the are given in Elsevier format
+
+% Part for setting citation format package: natbib
+
+% Part for setting citation format package: biblatex
+
+
+% tightlist command for lists without linebreak
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+
+
+
+\usepackage{float} \floatplacement{figure}{H} \usepackage{caption} \captionsetup[figure]{font=scriptsize} \pagenumbering{gobble}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{wrapfig}
+\usepackage{float}
+\usepackage{colortbl}
+\usepackage{pdflscape}
+\usepackage{tabu}
+\usepackage{threeparttable}
+\usepackage{threeparttablex}
+\usepackage[normalem]{ulem}
+\usepackage{makecell}
+\usepackage{xcolor}
+
+\begin{document}
+
+\title{STA4026Z Supervised Learning Assignment}
+
+\author{%
+%
+% Code for old style authors field
+%
+% Add \and if both authors and author
+%
+%
+% Code for new (elsevier) style author field
+\name{Jing Yeh}
+%
+\email{\href{mailto:yhxjin001@myuct.ac.za}{yhxjin001@myuct.ac.za}}%
+%
+%
+%
+%
+}
+
+\abstract{In this report, we explored the efficiency of 6 programming
+languages through the approximation of \(\pi\). We found that efficiency
+of various programming languages can vary widely, with C and C++ being
+the most efficient programming languages. We also presented evidence for
+compiled languages having better performance than interpreted languages.
+Our results suggest that programmers can benefit from taking the
+efficiency of various programming languages into account, rather than
+simply opting for simplicity in the syntax of these languages .}
+
+\date{2026-04-17}
+
+\keywords{Programming Languages, Efficieny, Large-Scaled Iterative
+Compuations}
+
+\maketitle
+
+
+
+\hfill\break
+\hfill\break
+
+\begin{center}\includegraphics[width=100px]{pi} \end{center}
+\newpage 
+\tableofcontents 
+\newpage
+
+\newpage
+\pagenumbering{arabic}
+
+\section{Introduction}\label{introduction}
+
+\[
+\sigma(z_j) &= \frac{\exp(z_j)}{\sum_{i=1}^{q}{\exp(z_i)}}
+\] We do this due to computational constraints. Exponential functions
+grow quickly as the input increases, but there is a limit of the number
+of bits that can be used to represent a number. Hence, we subtract
+\(z_j\) off the max \(z\) value to ensure that the kernel is always
+negative, effectively bounding the values between 0 and 1.
+
+\newpage
+
+Since we are interpreting each observation as row vectors, we can safely
+define the matrix
+\(X = [X^u X^v]_{N \times (d_{\vec{x^u}} + d_{\vec{x^v}})}\) without
+padding elements by zero. In that case, recall that
+\(A_1^u = {W_1^u}^TX^u + \vec{b_1^u}\) and
+\(A_1^v = {W_1^v}^TX^v + \vec{b_1^v}\), we apply the same logic and
+define \(A_1 = [A_1^u A_1^v]^T_{(d^1_u + d^1_v)\times N}\). Similarly,
+we define \(W_1 = \big(\begin{smallmatrix}
+  W_1^u & \O\\
+  \O & W_1^v
+\end{smallmatrix}\big)_{(p^u + p^v) \times (d^1_u + d^1_v)}\)
+
+\section{Methods}\label{methods}
+
+\section{Appendix}\label{appendix}
+
+
+
+
+
+
+\end{document}

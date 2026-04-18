@@ -1,0 +1,120 @@
+---
+# This template is largely functionally equivalent to that for elsevier
+# The two fields that are not in the elsevier format are:
+#      `corresponding_author` and `acknowledgements`
+title: STA4026Z Supervised Learning Assignment
+date: "`r Sys.Date()`"
+author:
+  - name: Jing Yeh
+    email: yhxjin001@myuct.ac.za
+nocite: '@*'
+
+abstract: In this report, we explored the efficiency of 6 programming languages through the approximation of $\pi$. We found that efficiency of various programming languages can vary widely, with C and C++ being the most efficient programming languages. We also presented evidence for compiled languages having better performance than interpreted languages. Our results suggest that programmers can benefit from taking the efficiency of various programming languages into account, rather than simply opting for simplicity in the syntax of these languages .
+  
+keywords: Programming Languages, Efficieny, Large-Scaled Iterative Compuations 
+  
+# Use a CSL when `citation_package = "default"`
+#csl: https://www.zotero.org/styles/oxford-university-press-note
+
+## Example of some pandoc's variable to use
+#fontsize: 12pt
+#spacing: halfline # could also be oneline
+#classoptions:
+#  - endnotes
+#link-citations: yes
+#urlcolor: orange
+#linkcolor: green
+#citecolor: red
+header-includes:
+ \usepackage{float}
+ \floatplacement{figure}{H}
+  \usepackage{caption}
+  \captionsetup[figure]{font=scriptsize}
+  \pagenumbering{gobble}
+#  - \usepackage[nomarkers,tablesfirst]{endfloat} # For figures and tables at end
+#  - \usepackage{lineno} # For line numbering
+#  - \linenumbers # For line numbering
+
+output:
+    rticles::oup_article:
+    oup_version: 0 # 1 = 2020 CTAN OUP CLS package; 0 = 2009 OUP CLS package
+    extra_dependencies: booktabs # for kable example
+    
+---
+\
+\
+```{r echo=FALSE, out.width="100px", fig.align='center'}
+knitr::include_graphics("pi.png")
+```
+\newpage 
+\tableofcontents 
+\newpage
+```{r setup, include = FALSE, warning=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE, # By default, hide code; set to TRUE to see code
+  fig.pos = 'H', 
+  out.width = '100%', dpi = 300, # Figure resolution and size
+  fig.env = "figure", # Latex figure environment,
+  warining=FALSE,
+  message = FALSE)
+library(tidyverse)
+library(scales)
+library(gridExtra)
+library(knitr)
+library(kableExtra)
+library(xtable)
+library(formattable)
+options(xtable.comment = FALSE)
+```
+\newpage
+\pagenumbering{arabic}
+# Introduction
+
+$$
+\sigma(z_j) &= \frac{\exp(z_j)}{\sum_{i=1}^{q}{\exp(z_i)}}
+$$
+We do this due to computational constraints. Exponential functions grow quickly as the input increases, but there is a limit of the number of bits that can be used to represent a number. Hence, we subtract $z_j$ off the max $z$ value to ensure that the kernel is always negative, effectively bounding the values between 0 and 1.
+
+```{r}
+softmax = function(Z_l){
+  # This fucntion takes in a q x N matrix, with z vector for each observation as columns
+  # Outputs a q x N probability matrix
+  
+  # We first calculatethe max value for each column
+  z_max = apply(Z_l, 2, max)
+  # turn the max matrix into a diagonal matrix
+  Z_max = diag(z_max)
+  # Apply exp to both Z_max and Z_l and then calculate exp(z_l - z_max) product
+  expZ_max = -exp(Z_max)
+  expZ_l = exp(Z_l)
+  expDiff = expZ_l %*% expZ_max
+  
+  # Get the denominators for softmax
+  Denominator = diag(1/colSums(expDiff))
+  
+  S = expDiff %*% Denominator
+  return(S)
+}
+
+
+```
+\newpage
+
+Since we are interpreting each observation as row vectors, we can safely define the matrix $X = [X^u X^v]_{N \times (p^u + p^v)}$. In that case, recall that $A_1^u = {W_1^u}^TX^u + \vec{b_1^u}$ and $A_1^v = {W_1^v}^TX^v + \vec{b_1^v}$, we apply the same logic and define $A_1 = [A_1^u A_1^v]^T_{(d^1_u + d^1_v)\times N}$. Similarly, we define $W_1 = \big[\begin{smallmatrix}
+  W_1^u & O\\
+  O & W_1^v
+\end{smallmatrix}\big]_{(p^u + p^v) \times (d^1_u + d^1_v)}$ and $\vec{b_1} = [b_1^u b_1^v]^T$. We thus have that $$A_1 = W_1^TX + \vec{b_1}$$.
+
+We repeat the same procedure to get
+$$
+A_2 = W_2^TA_1 +\vec{b_2}
+$$
+$$
+A_3 = W_3^TA_2 +\vec{b_3}
+$$
+# Methods
+
+
+
+
+# Appendix
