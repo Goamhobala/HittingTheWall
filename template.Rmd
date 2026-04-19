@@ -2,16 +2,16 @@
 # This template is largely functionally equivalent to that for elsevier
 # The two fields that are not in the elsevier format are:
 #      `corresponding_author` and `acknowledgements`
-title: STA4026Z Supervised Learning Assignment
+title: STA4026Z Neural Network Assignment: Hitting the wall - A runner’s guide
 date: "`r Sys.Date()`"
 author:
   - name: Jing Yeh
     email: yhxjin001@myuct.ac.za
 nocite: '@*'
 
-abstract: In this report, we explored the efficiency of 6 programming languages through the approximation of $\pi$. We found that efficiency of various programming languages can vary widely, with C and C++ being the most efficient programming languages. We also presented evidence for compiled languages having better performance than interpreted languages. Our results suggest that programmers can benefit from taking the efficiency of various programming languages into account, rather than simply opting for simplicity in the syntax of these languages .
+abstract:  In this report, we explored the effects of carbonhydrate, fluid intakes and average speed maintained by runners of both genders on whether they experience the common "hitting the wall" phenomanon during their runs. We use a split-brain neural network that models diet and runner's profile separately.
   
-keywords: Programming Languages, Efficieny, Large-Scaled Iterative Compuations 
+keywords: Neural Networks, Sports Science, Atheletics Data Analytics 
   
 # Use a CSL when `citation_package = "default"`
 #csl: https://www.zotero.org/styles/oxford-university-press-note

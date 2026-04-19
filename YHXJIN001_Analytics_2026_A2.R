@@ -60,13 +60,8 @@ obj = function(Y, Y_hat){
 
 neural_net = function(Xu, Xv, m, theta, nu, Y=NULL){
   # output: Y_hat: Raw probability output of the logistic function
-  # output: pred: prediction
-  
-  # Note I purposely made neural net function not taking in Y to ensure modularity
-  # In my opinion, evaluation should be the job of obj_train (the function fed into nlm)
-  # So we should not provide Y when making prediction with neural_net.
-  # Inference is the only job of neural_net
-  
+  # output: pred: prediction value
+  # output: E: evaluation error as required
   
   pu = dim(Xu)[2]
   pv = dim(Xv)[2]
@@ -109,9 +104,16 @@ neural_net = function(Xu, Xv, m, theta, nu, Y=NULL){
   # Since this is a classification problem, we use logistic equation
   Y_hat = sig_out(z_out)
   pred = ifelse(Y_hat >= 0.5, 1, 0)
-
+  E=NULL
+  if (!is.null(Y)){
+    
+    base_error = obj(Y, Y_hat) / nrow(Y)
+    penalty = (nu / nrow(Y)) * (sum(W1^2) + sum(W2^2) + sum(W3^2))
+    E = base_error + penalty
+  }
   
-  return(list(Y_hat = Y_hat, pred = pred, E=))
+  
+  return(list(Y_hat = Y_hat, pred = pred, E=E))
 }
 
 set.seed(2026)
@@ -133,7 +135,7 @@ nparams = (pu * m) + (pv * m) + 2 * m  + 2 * m * 2 + 2 + 2 + 1
 theta = runif(nparams, -1, 1)
 
 nu_grid = exp(seq(-8,-0,length
-            =30))
+            =25))
 # Do grid search on values of nu_grid
 errors = rep(1, length(nu_grid))
 theta_store = matrix(NA, length(nu_grid), nparams)
@@ -141,14 +143,11 @@ for (i in 1:length(nu_grid)){
   nu = nu_grid[i]
   
   obj_train = function(theta_init) {
-    result = neural_net(Xtrain_u, Xtrain_v, 4, theta_init, nu)
-    
-    base_error = obj(Ytrain, result$Y_hat) / nrow(Xtrain_u)
-    penalty = (nu / nrow(Xtrain_u)) * (sum(result$W1^2) + sum(result$W2^2) + sum(result$W3^2))
-    return(base_error + penalty)
+    result = neural_net(Xtrain_u, Xtrain_v, 4, theta_init, nu, Ytrain)
+    return(result$E)
   }
   cat("Training network for nu =", nu, "\n")
-  trained = nlm(obj_train,theta, iterlim=500)
+  trained = nlm(obj_train, theta, iterlim=1000)
   theta_store[i, ] =trained$estimate
   valid_result = neural_net(Xvalid_u, Xvalid_v, 4, trained$estimate, nu)
 
@@ -189,12 +188,19 @@ xxu2_female = rep(1, each=M^2)
 XXumale = cbind(xxu1, xxu2_male)
 XXufemale = cbind(xxu1, xxu2_female)
 
-response_male = neural_net(XXumale, XXv, 4, theta_best_nu, best_nu)
-response_female = neural_net(XXufemale,XXv,  4, theta_best_nu, best_nu)
-plot(xxv2 ~ xxv1, col=color.gradient(response_male$Y_hat), pch=16)
-plot(xxv2 ~ xxv1, col=color.gradient(response_female$Y_hat), pch=16)
+plot(xxv2 ~ xxv1, col=color.gradient(response_male$Y_hat), pch=15, cex=0.8, 
+     xlab="Carbohydrate Intake", ylab="Fluid Intake", 
+     main="Male: Probability of Hitting the Wall")
+legend("topright", title="Risk of Bombing",
+       legend=c("High (Near 100%)", "Medium (~50%)", "Low (Near 0%)"), 
+       col=c("skyblue1", "purple", "coral"), pch=16, bg="white", cex=0.5)
 
-
+plot(xxv2 ~ xxv1, col=color.gradient(response_female$Y_hat), pch=15, cex=0.8, 
+     xlab="Carbohydrate Intake", ylab="Fluid Intake", 
+     main="Female: Probability of Hitting the Wall")
+legend("topright", title="Risk of Bombing",
+       legend=c("High (Near 100%)", "Medium (~50%)", "Low (Near 0%)"), 
+       col=c("skyblue1", "purple", "coral"), pch=16, bg="white", cex=0.5)
 Xu_male = data.frame(AveSpeed=12, Sex=0)
 Xu_male = Xu_male[rep(seq_len(nrow(Xu_male)), each = 100), ]
 Xu_female = data.frame(AveSpeed=12, Sex=1)
