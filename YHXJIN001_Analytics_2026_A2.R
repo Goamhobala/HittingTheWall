@@ -39,8 +39,8 @@ softmax = function(Z_l){
   S = expDiff %*% Denominator
   return(S)
 }
-Xu = cbind(data_scaled$AveSpeed, data_scaled$Sex)
-Xv = cbind(data_scaled$Carbs, data_scaled$Fluid)
+Xu = cbind(data$AveSpeed, data$Sex)
+Xv = cbind(data$Carbs, data$Fluid)
 
 # We should not scale the response variable
 Y = cbind(data$Bombed)
@@ -58,10 +58,10 @@ obj = function(Y, Y_hat){
   return (sum(-(Y * log(t(Y_hat)) + (1-Y) * log(t(1-Y_hat)))))
 }
 
-neural_net = function(Xu, Xv, m, theta, Y, nu){
+neural_net = function(Xu, Xv, m, theta, nu){
   pu = dim(Xu)[2]
   pv = dim(Xv)[2]
-  N = dim(Y)[1]
+  N = dim(Xu)[1]
   X = cbind(Xu, Xv)
   # 2m part
   
@@ -100,9 +100,9 @@ neural_net = function(Xu, Xv, m, theta, Y, nu){
   # Since this is a classification problem, we use logistic equation
   Y_hat = sig_out(z_out)
   pred = ifelse(Y_hat >= 0.5, 1, 0)
-  E = obj(Y, Y_hat)/N + (nu /N) * (sum(W1^2) + sum(W2^2) + sum(W3^2))
+
   
-  return(list(A1=A1, A2=A2, E=E))
+  return(list(Y_hat = Y_hat, pred = pred, W1 = W1, W2 = W2, W3 = W3))
 }
 
 set.seed(2026)
@@ -123,29 +123,65 @@ pv = dim(Xv)[2]
 nparams = (pu * m) + (pv * m) + 2 * m  + 2 * m * 2 + 2 + 2 + 1
 theta = runif(nparams, -1, 1)
 
-nu_grid = exp(seq(-7,-0,length
-            =20))
+nu_grid = exp(seq(-8,-0,length
+            =30))
 # Do grid search on values of nu_grid
 errors = rep(1, length(nu_grid))
+theta_store = matrix(NA, length(nu_grid), nparams)
 for (i in 1:length(nu_grid)){
   nu = nu_grid[i]
   
   obj_train = function(theta_init) {
-    result = neural_net(Xtrain_u, Xtrain_v, 4, theta_init, Ytrain, nu)
-    return(result$E)
+    result = neural_net(Xtrain_u, Xtrain_v, 4, theta_init, nu)
+    
+    base_error = obj(Ytrain, result$Y_hat) / nrow(Xtrain_u)
+    penalty = (nu / nrow(Xtrain_u)) * (sum(result$W1^2) + sum(result$W2^2) + sum(result$W3^2))
+    return(base_error + penalty)
   }
   cat("Training network for nu =", nu, "\n")
-  trained = nlm(obj_train,theta)
-  valid_result = neural_net(Xvalid_u, Xvalid_v, 4, trained$estimate, Yvalid, nu)
+  trained = nlm(obj_train,theta, iterlim=500)
+  theta_store[i, ] =trained$estimate
+  valid_result = neural_net(Xvalid_u, Xvalid_v, 4, trained$estimate, nu)
 
   cat("Finished validating nu =", nu, "\n")
-  errors[i] = valid_result$E  
+  errors[i] = obj(Yvalid, valid_result$Y_hat) / nrow(Xvalid_u)
 }
-lines(errors ~ log(nu_grid), pch=1, col="firebrick4")
+plot(errors ~ log(nu_grid), pch=1, col="firebrick4", type="b")
 best_index = which.min(errors)
 best_nu = nu_grid[best_index]
+theta_best_nu = theta_store[best_index,]
+
+# Response Curve over Carbs, Sex, Fluid
+carbs_seq = seq(min(data$Carbs),max(data$Carbs),length.out= 100)
+carbs_mean = mean(data$Carbs)
+fluid_seq = seq(min(data$Fluid),max(data$Fluid),length.out= 100)
+fluid_mean = mean(data$Fluid)
+
+Xu_male = data.frame(AveSpeed=12, Sex=0)
+Xu_male = Xu_male[rep(seq_len(nrow(Xu_male)), each = 100), ]
+Xu_female = data.frame(AveSpeed=12, Sex=1)
+Xu_female = Xu_female[rep(seq_len(nrow(Xu_female)), each = 100), ]
+Xv_carbs = data.frame(Carbs=carbs_seq, fluid=fluid_mean)
+Xv_fluid = data.frame(Carbs=carbs_mean, fluid=fluid_seq)
+X_carbs = data.frame(AveSpeed=12, Sex=0, Fluid=1)
+
+pred_carbsMale = neural_net(Xu_male, Xv_carbs, 4, theta_best_nu, best_nu)
+pred_carbsFemale = neural_net(Xu_female, Xv_carbs, 4, theta_best_nu, best_nu)
+pred_fluidMale = neural_net(Xu_male, Xv_fluid, 4, theta_best_nu, best_nu)
+pred_fluidFemale =neural_net(Xu_female, Xv_fluid, 4, theta_best_nu, best_nu)
 
 
+plot(as.vector(pred_carbsMale$Y_hat) ~ carbs_seq, type="l", col="coral1", lwd=2, 
+     xlab="Carbs", ylab="Probability of Bombing", main="Response to Carbs by Sex", ylim=c(0,1))
+lines(as.vector(pred_carbsFemale$Y_hat) ~ carbs_seq, type="l", col="skyblue4", lwd=2)
+legend("bottomleft", legend=c("Male (Sex=0)", "Female (Sex=1)"), 
+       col=c("coral1", "skyblue4"), lty=1, lwd=2, cex=0.5)
+
+plot(as.vector(pred_fluidMale$Y_hat) ~ fluid_seq, type="l", col="hotpink", lwd=2, 
+     xlab="Fluid", ylab="Probability of Bombing", main="Response to Fluid by Sex")
+lines(as.vector(pred_fluidFemale$Y_hat) ~ fluid_seq, type="l", col="black", lwd=2)
+legend("bottomleft", legend=c("Male (Sex=0)", "Female (Sex=1)"), 
+       col=c("hotpink", "black"), lty=1, lwd=2, cex=0.5)
 
 # Just in case we need cross validation
 set.seed(2026)
@@ -173,8 +209,8 @@ cross_validation = function(Xu, Xv, folds, nu){
     
     # Wrapper function to train NN with nlm
     obj_train = function(theta_init) {
-      result = neural_net(Xu_train, Xv_train, 4, theta_init, Y_train, nu)
-      return(result$E)
+      result = neural_net(Xu_train, Xv_train, 4, theta_init, nu)
+      return(result$pred)
     }
     result_fold = nlm(neural_net, theta)
     total_valid_error = neural_net(Xu_valid, Xv_valid, 4, result_fold$esimate, Y_valid, nu)
