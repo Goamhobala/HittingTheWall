@@ -58,7 +58,16 @@ obj = function(Y, Y_hat){
   return (sum(-(Y * log(t(Y_hat)) + (1-Y) * log(t(1-Y_hat)))))
 }
 
-neural_net = function(Xu, Xv, m, theta, nu){
+neural_net = function(Xu, Xv, m, theta, nu, Y=NULL){
+  # output: Y_hat: Raw probability output of the logistic function
+  # output: pred: prediction
+  
+  # Note I purposely made neural net function not taking in Y to ensure modularity
+  # In my opinion, evaluation should be the job of obj_train (the function fed into nlm)
+  # So we should not provide Y when making prediction with neural_net.
+  # Inference is the only job of neural_net
+  
+  
   pu = dim(Xu)[2]
   pv = dim(Xv)[2]
   N = dim(Xu)[1]
@@ -102,7 +111,7 @@ neural_net = function(Xu, Xv, m, theta, nu){
   pred = ifelse(Y_hat >= 0.5, 1, 0)
 
   
-  return(list(Y_hat = Y_hat, pred = pred, W1 = W1, W2 = W2, W3 = W3))
+  return(list(Y_hat = Y_hat, pred = pred, E=))
 }
 
 set.seed(2026)
@@ -152,10 +161,39 @@ best_nu = nu_grid[best_index]
 theta_best_nu = theta_store[best_index,]
 
 # Response Curve over Carbs, Sex, Fluid
-carbs_seq = seq(min(data$Carbs),max(data$Carbs),length.out= 100)
+
+library(colorspace)
+color.gradient = function(x, colors=c('coral','purple','skyblue1'), colsteps=25)
+{
+  colpal = colorRampPalette(colors)
+  return( colpal(colsteps)[ findInterval(x, seq(min(x),max(x), length=colsteps)) ] )
+}
+
+
+M=100
+carbs_seq = seq(min(data$Carbs),max(data$Carbs),length.out= M)
 carbs_mean = mean(data$Carbs)
-fluid_seq = seq(min(data$Fluid),max(data$Fluid),length.out= 100)
+fluid_seq = seq(min(data$Fluid),max(data$Fluid),length.out= M)
 fluid_mean = mean(data$Fluid)
+
+
+
+
+xxv1 = rep(carbs_seq, M)
+xxv2 = rep(fluid_seq, each =M)
+XXv = cbind(xxv1, xxv2)
+
+xxu1 = rep(12, M^2)
+xxu2_male = rep(0, each = M^2)
+xxu2_female = rep(1, each=M^2)
+XXumale = cbind(xxu1, xxu2_male)
+XXufemale = cbind(xxu1, xxu2_female)
+
+response_male = neural_net(XXumale, XXv, 4, theta_best_nu, best_nu)
+response_female = neural_net(XXufemale,XXv,  4, theta_best_nu, best_nu)
+plot(xxv2 ~ xxv1, col=color.gradient(response_male$Y_hat), pch=16)
+plot(xxv2 ~ xxv1, col=color.gradient(response_female$Y_hat), pch=16)
+
 
 Xu_male = data.frame(AveSpeed=12, Sex=0)
 Xu_male = Xu_male[rep(seq_len(nrow(Xu_male)), each = 100), ]
@@ -182,6 +220,15 @@ plot(as.vector(pred_fluidMale$Y_hat) ~ fluid_seq, type="l", col="hotpink", lwd=2
 lines(as.vector(pred_fluidFemale$Y_hat) ~ fluid_seq, type="l", col="black", lwd=2)
 legend("bottomleft", legend=c("Male (Sex=0)", "Female (Sex=1)"), 
        col=c("hotpink", "black"), lty=1, lwd=2, cex=0.5)
+
+
+# Interpretation: It seems like males, in general, are able to consume less carbs, and drink more fluid to avoid getting bombed.
+# On the other hand, female atheletes cannot drink as much fluid as males, and require more carbs to not getting bombed
+
+# We recommend male runners to aim to consume between 1l to 1.8l of fluid,, 50g to 90g of carbs when running at 12km/hr
+# Female runners should aim to consume between 1l to 1.6l of fluid, 60g to 90g of carbs when running at 12km/hr.
+
+# Empirical advantage of using a split brain network
 
 # Just in case we need cross validation
 set.seed(2026)
