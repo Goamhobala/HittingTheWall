@@ -183,24 +183,26 @@ xxv2 = rep(fluid_seq, each =M)
 XXv = cbind(xxv1, xxv2)
 
 xxu1 = rep(12, M^2)
-xxu2_male = rep(0, each = M^2)
-xxu2_female = rep(1, each=M^2)
+xxu2_male = rep(1, each = M^2)
+xxu2_female = rep(0, each=M^2)
 XXumale = cbind(xxu1, xxu2_male)
 XXufemale = cbind(xxu1, xxu2_female)
 
-plot(xxv2 ~ xxv1, col=color.gradient(response_male$Y_hat), pch=15, cex=0.8, 
-     xlab="Carbohydrate Intake", ylab="Fluid Intake", 
-     main="Male: Probability of Hitting the Wall")
+plot(xxv2 ~ xxv1, col=color.gradient(response_female$Y_hat), pch=16, cex=0.8, 
+     xlab="Carbohydrate intake (gram,)", ylab="Fluid intake (litre)", 
+     main="Female: probability of hitting the wall.")
 legend("topright", title="Risk of Bombing",
        legend=c("High (Near 100%)", "Medium (~50%)", "Low (Near 0%)"), 
        col=c("skyblue1", "purple", "coral"), pch=16, bg="white", cex=0.5)
 
-plot(xxv2 ~ xxv1, col=color.gradient(response_female$Y_hat), pch=15, cex=0.8, 
-     xlab="Carbohydrate Intake", ylab="Fluid Intake", 
-     main="Female: Probability of Hitting the Wall")
+plot(xxv2 ~ xxv1, col=color.gradient(response_male$Y_hat), pch=16, cex=0.8, 
+     xlab="Carbohydrate intake (gram)", ylab="Fluid intake (litre)", 
+     main="Male: probability of hitting the wall.")
 legend("topright", title="Risk of Bombing",
        legend=c("High (Near 100%)", "Medium (~50%)", "Low (Near 0%)"), 
        col=c("skyblue1", "purple", "coral"), pch=16, bg="white", cex=0.5)
+
+
 Xu_male = data.frame(AveSpeed=12, Sex=0)
 Xu_male = Xu_male[rep(seq_len(nrow(Xu_male)), each = 100), ]
 Xu_female = data.frame(AveSpeed=12, Sex=1)
