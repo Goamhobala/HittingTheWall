@@ -64,34 +64,65 @@ library(xtable)
 library(formattable)
 options(xtable.comment = FALSE)
 rm(list=ls())
+data = as.data.frame(read.table("HittingTheWall_2026.txt", header=TRUE))
 ```
 \newpage
 
 # Problem Set
 ## 1.a {-}
-```{r echo = T, results = 'hide', fig.width=6, fig.height=6}
-data = as.data.frame(read.table("HittingTheWall_2026.txt", header=TRUE))
-pairs(Bombed ~ . , data=data, pch=16, col="hotpink", 
+```{r echo = T, results = 'hide', fig.width=6, fig.height=6, fig.cap="Pairwise comparison of continuous features colored by runner outcome (black = Safe, red = Bombed). The lack of linear separability justifies the application of deep learning techniques."}
+par(oma = c(3, 0, 2, 0)) 
+pairs(Bombed ~ . , data=data, pch=16, 
+      col = ifelse(data$Bombed == TRUE, "tomato3", "gray"), 
       main="Pairwise Relationships of Runner Features.")
 
+# Create a transparent, invisible plot over the entire canvas
+par(fig = c(0, 1, 0, 1), oma = c(0, 0, 0, 0), mar = c(0, 0, 0, 0), new = TRUE)
+plot(0, 0, type = 'n', bty = 'n', xaxt = 'n', yaxt = 'n')
+
+legend("bottom", legend = c("Safe (FALSE)", "Bombed (TRUE)"), 
+       col = c("gray", "tomato3"), pch = 16, 
+       horiz = TRUE, bty = "n", inset = c(0, 0))
+
+par(oma = c(0, 0, 0, 0), fig = c(0, 1, 0, 1))
+```
+```{r echo=T, results="hide", fig.width=6, fig.height=6, fig.cap="Boxplot of average speed, carbohydrate intake hour, fluid intake per hour by bombed status and the conditional proportion of runners experiencing a 'wall' event by sex."}
 par(mfrow=c(2,2))
 
-# Histograms
-hist(data$Carbs, col="skyblue", main="Distribution of Carbohydrates.", 
-     xlab="Carbohydrates (g)", ylab="Frequency")
 
-hist(data$Fluid, col="skyblue", main="Distribution of Fluid Intake.", 
-     xlab="Fluid Intake (L)", ylab="Frequency")
+boxplot(data$Carbs ~ data$Bombed, col=ifelse(data$Bombed == TRUE, "tomato3", "gray"), main="Boxplot of carbohydrate intake by bombed.", 
+     xlab="Bombed", ylab="Carbohydrate intake (g/h)",
+     cex.main = 0.8,
+     names.arg = c(TRUE,FALSE))
 
-hist(data$AveSpeed, col="skyblue", main="Distribution of Average Speed.", 
-     xlab="Average Speed (km/h)", ylab="Frequency")
-boxplot(data, col="coral", main="Feature Spread (by Magnitude).", 
-        ylab="Raw Value", las=2, cex.axis=0.8)
+boxplot(data$Fluid ~ data$Bombed, col=ifelse(data$Bombed == TRUE, "tomato3", "gray"), main="Boxplot of fluid intake by bombed.", 
+     xlab="Bombed", ylab="Fluid intake (L/h)",
+     cex.main = 0.8,
+     names.arg = c(TRUE,FALSE))
+
+boxplot(data$AveSpeed ~ data$Bombed, col=ifelse(data$Bombed == TRUE, "tomato3", "gray"), main="Boxplot of average speed by bombed.", 
+     xlab="Bombed", ylab="Average speed (km/h)",
+     cex.main = 0.8,
+     names.arg = c(TRUE,FALSE))
+
+sex_tab = prop.table(table(data$Sex, data$Bombed), 1)
+rownames(sex_tab) = c("Female", "Male")
+colnames(sex_tab) = c("FALSE", "TRUE")
+plot_data = t(sex_tab)
+barplot(plot_data, beside=TRUE, ylim=c(0, 1), xtick=c("Bombed", "Safe"),
+        xlab="Sex", ylab="Proportion",
+        main="Proportion of Runners Bombed by Sex.",
+        col=c("gray", "tomato3"),
+        cex.main = 0.8
+        )
+
 par(mfrow = c(1, 1))
 ```
-From the pairwise plots, we can see massive overlap between the classes across every single feature. There is no clear linear threshold in any 2D projection that separates the runners who bombed from those who did not. This high degree of overlap and the likelihood of complex feature interactions motivates our decision to model the response with a neural network, which is much more flexible in modelling non-linear, multi-dimensional boundaries. Furthermore, this is a classification problem,  which motivates our choice of using softmax as our output layer activation funciton.
+From the pairwise plots (Figure 1), we can see massive overlap between the classes across every single feature. There is no clear linear threshold in any 2D projection that separates the runners who bombed from those who did not. This high degree of overlap and the likelihood of complex feature interactions motivates our decision to model the response with a neural network, which is much more flexible in modelling non-linear, multi-dimensional boundaries. Furthermore, this is a classification problem,  which motivates our choice of using softmax as our output layer activation function.
 
-From the histograms and the boxplots, we see that the features have ranges that vary greatly. This is bad for neural networks. We would have needed to rescale the data if we were using standard gradient descent. However, R's nlm uses a Newton-like second-order derivative optimisation algorithm, which implicitly takes care of the scaling.
+From the boxplots(Figure 2), we may observe that there is minimal difference in the spread of average speed conditioned on bombed status. On the other hand, the differences in the spread of carbohydrate and fluid intake conditional on bombed status suggest that the distributions differ based on bombed status.
+
+Furthermore, from the boxplots (Figure 2), we may also see that the features have ranges that vary greatly. This is bad for neural networks. We would have needed to rescale the data if we were using standard gradient descent. However, R's nlm uses a Newton-like second-order derivative optimisation algorithm, which implicitly takes care of the scaling.
 
 ## 1.b {-}
 We start with Equation 2:
@@ -143,7 +174,6 @@ softmax = function(Z_l){
   return(as.matrix(S))
 }
 
-
 ```
 
 ## 1.d {-}
@@ -169,27 +199,33 @@ Xv = cbind(data$Carbs, data$Fluid)
 
 # One-hot encoding the response for two outputs as requested
 Y = cbind(1 - data$Bombed, data$Bombed)
-
-# I coded the neural network thinking I only need one response,
-# so I needed to do this:
-#Y = cbind(data$Bombed)
 ```
 
 ## 1.f {-}
-Assume that the output layer has n nodes. The number of \textbf{weights} is calculated per layer ($W_1$, $W_2$, $W_3$):
+Assume that the output layer has $n$ nodes. The number of \textbf{weights} is calculated per layer ($W_1$, $W_2$, $W_3$):
 $$
-\text{Weights} = (p^u m + p^v m) + (2m \times 2) + (2 \times n),
+\text{Weights} = (p^u m + p^v m) + (m \times 1 + m \times 1) + (2 \times n)
 $$
-$$\text{Weights} = m(p^u + p^v) + 4m + 2n.$$
+Substituting our dataset values ($m = 4$, $p^u = 2$, $p^v = 2$, $n = 2$):
+$$
+\text{Weights} = (2(4) + 2(4)) + (4 \times 1 + 4 \times 1) + (2 \times 2)
+$$
+$$
+\text{Weights} = 16 + 8 + 4 = 28
+$$
 
 The number of \textbf{biases} is calculated per layer ($b_1$, $b_2$, $b_3$):
 $$
-\text{Biases} = (m + m) + 2 + n,
+\text{Biases} = (m + m) + (1 + 1) + n
+$$
+Substituting our dataset values:
+$$
+\text{Biases} = (4 + 4) + 2 + 2
 $$
 $$
-\text{Biases} = 2m + 2 + n,
+\text{Biases} = 8 + 2 + 2 = 12
 $$
-For our dataset with m = 4 and two output nodes (n = 2), we have a total of 48 learnable parameters.
+Summing the weights and biases ($28 + 12$), we have a total of 40 learnable parameters.
 
 ## 1.g {-}
 ```{r echo = T, results = 'hide'}
@@ -218,54 +254,60 @@ neural_net = function(Xu, Xv, m, theta, nu, Y=NULL){
   pv = dim(Xv)[2]
   N = dim(Xu)[1]
   X = cbind(Xu, Xv)
-  # 2m part
   
+  # 1st layer (m nodes per hemisphere)
   index = 1:(m*pu)
   W1u = matrix(theta[index], pu, m)
-
   index = max(index) + 1:(pv*m)
   W1v = matrix(theta[index], pv, m)
-
   W1 = as.matrix(bdiag(W1u, W1v))
-
-  # 2 layer
-  index = max(index)+1:(2*m*2) 
-  W2 = matrix(theta[index], 2 * m, 2)
-
   
-  index = max(index)+1:4
+  # 2nd layer (SPLIT BRAIN: 1 node per hemisphere)
+  index = max(index) + 1:m
+  W2u = matrix(theta[index], m, 1)
+  index = max(index) + 1:m
+  W2v = matrix(theta[index], m, 1)
+  W2 = as.matrix(bdiag(W2u, W2v))
+  
+  # Output layer (Fully connected, 4 parameters)
+  index = max(index) + 1:4
   W3 = matrix(theta[index], 2, 2)
-
-  index = max(index) + 1:(m)
+  
+  # Biases Layer 1
+  index = max(index) + 1:m
   b1u = matrix(theta[index], m, 1)
-  index = max(index) + 1:(m)
+  index = max(index) + 1:m
   b1v = matrix(theta[index], m, 1)
   b1 = rbind(b1u, b1v)
   
+  # Biases Layer 2 (1 bias per hemisphere, 2 total)
   index = max(index) + 1:2
   b2 = matrix(theta[index], 2, 1)
+  
+  # Biases Output Layer (2 nodes, 2 biases)
   index = max(index) + 1:2
   b3 = matrix(theta[index], 2, 1)
   
+  # Forward Pass
   ones = matrix(1, N, 1)
   A0 = as.matrix(t(X))
   A1 = sig(t(W1) %*% A0 + b1 %*% t(ones))
   A2 = sig(t(W2) %*% A1 + b2 %*% t(ones))
   Z_out = t(W3) %*% A2 + b3 %*% t(ones)
-  # Since this is a classification problem, we use logistic function
+  
+  # Output mapping
   Y_hat = t(sig_out(Z_out))
   pred = max.col(Y_hat) - 1
+  
   # Evaluation
-  E=NULL
+  E = NULL
   if (!is.null(Y)){
-
     base_error = obj(Y, Y_hat) / nrow(Y)
     penalty = (nu / nrow(Y)) * (sum(W1^2) + sum(W2^2) + sum(W3^2))
     E = base_error + penalty
   }
   
-  # only return column 2 (bombed)
-  return(list(Y_hat = Y_hat, pred = pred, E=E))
+  return(list(Y_hat = Y_hat, pred = pred, E = E))
 }
 ```
 
@@ -286,7 +328,7 @@ Yvalid = as.matrix(Y[-train_indices, ])
 
 pu = dim(Xu)[2]
 pv = dim(Xv)[2]
-nparams = (pu * m) + (pv * m) + 2 * m  + 2 * m * 2 + 2 + 2 + 4
+nparams = (pu * m) + (pv * m) + 2 * m  + 2 * m + 4 + 4
 theta = runif(nparams, -1, 1)
 
 nu_grid = exp(seq(-6,2,length
@@ -310,7 +352,7 @@ for (i in 1:length(nu_grid)){
   errors[i] = obj(Yvalid, valid_result$Y_hat) / nrow(Xvalid_u)
 }
 ```
-```{r fig.width=6, fig.height=6}
+```{r fig.width=6, fig.height=6, fig.cap="L2 regularised cross entropy loss conditioned on L2 regularisation parameter, nu."}
 plot(errors ~ log(nu_grid), pch=16, col="firebrick4", type="b", 
      main="Validation Error vs. Regularization Parameter (Log nu).",
      xlab="Log(nu)", ylab="Validation Error", 
@@ -319,10 +361,10 @@ best_index = which.min(errors)
 best_nu = nu_grid[best_index]
 theta_best_nu = theta_store[best_index,]
 ```
-From the above, the best $\nu$ value that results in the lowest validation loss is approximately 0.05 (0.0515 using the scale above).
+From the above, the best $\nu$ value that results in the lowest validation loss is approximately 0.03.
 
 ## 1.i {-}
-```{r echo = T, results = 'hide', fig.width=6, fig.height=6}
+```{r echo = T, results = 'hide', fig.width=6, fig.height=6, fig.cap="Response plots for runners of both sexes maintaining an average speed of 12km/h according to their carbohydrate intake and fluid intake."}
 
 library(colorspace)
 color.gradient = function(x, colors=c('coral','purple','skyblue1'), colsteps=25)
@@ -374,10 +416,84 @@ Female runners, on the other hand, have a significantly larger safety range comp
 To summarise, both plots indicate a ceiling effect where over-consuming both fluids and carbohydrates (the top-right region) increases the risk of bombing. As such, while females have more leeway, the safest region for both sexes running at 12km/h remains 1 L/h to 1.5 L/h of fluid and 50g/h to 90g/h of carbohydrates. This is a practical recommendation that we advise runners of both sexes to adhere to, assuming an average running speed of 12km/h.
 
 ## 1.k {-}
-The split-brain architecture makes intuitive sense because the features naturally fall into two distinct, independent domains: physiological/demographic states (Xu: Speed, Sex) and active nutritional intake (Xv: Carbs, Fluid). Processing them in separate sub-networks for the first layer allows the model to learn pure representations of a runner's "physical profile" and "nutrition profile" before forcing them to interact.
+```{r echo=T, fig.width=6, fig.height=6, fig.cap="L2 regularised cross entropy loss conditioned on L2 regularisation parameter, nu, for both the split-brain network and a regular 4, 4 neural network."}
+# Empirical comparison 4-4 network
 
-As calculated in Part (f), the split-brain network explicitly prevents connections between the u and v inputs in the first hidden layer. A standard fully-connected network would calculate weights for every input against every node, drastically increasing the parameter count. By zeroing out the cross-hemisphere weights (using the block-diagonal matrix from Part d), the split-brain network acts as a strict form of architectural regularisation, preventing the model from overfitting to random noise between independent variables.
+std_neural_net = function(X, m, theta, nu, Y=NULL){
+  p = dim(X)[2]
+  N = dim(X)[1]
+  q = 2
+  
+  index = 1:(m*p)
+  W1 = matrix(theta[index], p, m)
+  index = max(index) + 1:(m*m)
+  W2 = matrix(theta[index], m, m)
+  index = max(index) + 1:(m*q)
+  W3 = matrix(theta[index], m, q)
+  
+  index = max(index) + 1:m
+  b1 = matrix(theta[index], m, 1)
+  index = max(index) + 1:m
+  b2 = matrix(theta[index], m, 1)
+  index = max(index) + 1:q
+  b3 = matrix(theta[index], q, 1)
+  
+  ones = matrix(1, N, 1)
+  A0 = as.matrix(t(X))
+  A1 = sig(t(W1) %*% A0 + b1 %*% t(ones))
+  A2 = sig(t(W2) %*% A1 + b2 %*% t(ones))
+  Z_out = t(W3) %*% A2 + b3 %*% t(ones)
+  
+  Y_hat = t(sig_out(Z_out))
+  pred = max.col(Y_hat) - 1
+  
+  E = NULL
+  if (!is.null(Y)){
+    base_error = obj(Y, Y_hat) / nrow(Y)
+    penalty = (nu / nrow(Y)) * (sum(W1^2) + sum(W2^2) + sum(W3^2))
+    E = base_error + penalty
+  }
+  return(list(Y_hat = Y_hat, pred = pred, E = E))
+}
 
-While appropriate, we must note a limitation based on our findings in Part (j). We discovered some interaction between Sex and nutritional safety zones. Because of the split-brain design, the network is incapable of learning the interaction between "Sex" and "Carbohydrates" in the first hidden layer. It is forced to pass those independent concepts up to the second hidden layer before they can be combined. Fortunately, the network was still successful at modeling this interaction, proving the architecture is deep enough to handle the data despite the initial bottleneck.
+# Setup the combined data
+Xtrain_full = cbind(Xtrain_u, Xtrain_v)
+Xvalid_full = cbind(Xvalid_u, Xvalid_v)
 
+# Standard (4,4) has exactly 50 parameters
+std_nparams = 50 
+set.seed(2026)
+std_theta = runif(std_nparams, -1, 1)
+std_errors = rep(1, length(nu_grid))
+
+cat("\n--- Training Standard Network ---\n")
+for (i in 1:length(nu_grid)){
+  nu = nu_grid[i]
+  std_obj_train = function(theta_init) {
+    result = std_neural_net(Xtrain_full, 4, theta_init, nu, Ytrain)
+    return(result$E)
+  }
+  std_trained = nlm(std_obj_train, std_theta, iterlim=1000)
+  std_valid_result = std_neural_net(Xvalid_full, 4, std_trained$estimate, nu)
+  std_errors[i] = obj(Yvalid, std_valid_result$Y_hat) / nrow(Xvalid_full)
+}
+
+# Plot them together
+plot(log(nu_grid), errors, type="b", col="firebrick4", pch=16, 
+     main="Split-Brain vs Standard (4,4) Network",
+     xlab="Log(nu)", ylab="Validation Error", ylim=range(c(errors, std_errors)))
+lines(log(nu_grid), std_errors, type="b", col="skyblue", pch=16)
+legend("topleft", legend=c("Split-Brain (40 params)", "Standard (50 params)"), 
+       col=c("firebrick4", "skyblue"), lty=1, pch=16)
+
+```
+
+
+Based on the comparative analysis, there is no empirical advantage to using the split-brain network for modelling this specific dataset.
+
+As demonstrated in the validation cross-entropy plot, the standard (4,4) network consistently outperforms the split-brain network across almost the entire grid of regularisation parameters ($\nu$), ultimately achieving a lower minimum validation error.
+
+Empirically, the data suggests that forcing the network to keep the physiological inputs (Carbs/Fluid) and demographic inputs (Sex/Speed) independent until the final layer creates an artificial bottleneck that hinders performance. The standard network allows all inputs to interact immediately in the first hidden layer. Because a runner's optimal nutritional intake is dependent on their biological sex (as seen in our EDA and response surfaces), allowing these features to cross-communicate early and often yields empirically better predictions.
+
+Furthermore, the standard (4,4) network benefits from a larger parameter capacity (50 parameters compared to the split-brain's 40). While the split-brain architecture offers theoretical advantages in terms of interpretability and structural regularisation, the empirical evidence strictly favours the standard fully-connected network for minimising predictive error on this dataset.
 
