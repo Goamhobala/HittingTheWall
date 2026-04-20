@@ -86,7 +86,7 @@ legend("bottom", legend = c("Safe (FALSE)", "Bombed (TRUE)"),
 
 par(oma = c(0, 0, 0, 0), fig = c(0, 1, 0, 1))
 ```
-```{r echo=T, results="hide", fig.width=6, fig.height=6, fig.cap="Boxplot of average speed, carbohydrate intake hour, fluid intake per hour by bombed status and the conditional proportion of runners experiencing a 'wall' event by sex."}
+```{r echo=T, results="hide", fig.width=6, fig.height=6, fig.cap="Boxplot of average speed, carbohydrate intake hour, fluid intake per hour by bombed status and the conditional proportion of runners experiencing a 'bombed' event by sex."}
 par(mfrow=c(2,2))
 
 
@@ -178,16 +178,16 @@ softmax = function(Z_l){
 
 ## 1.d {-}
 
-Since we are interpreting each observation as row vectors, we can safely define the matrix $X = [X^u X^v]_{N \times (p^u + p^v)}$. In that case, recall that $A_1^u = {W_1^u}^T {X^u}^T + \vec{b_1^u}$ and $A_1^v = {W_1^v}^TX^v + \vec{b_1^v}$, we apply the same logic and define $A_1 = [A_1^u A_1^v]^T_{(d^1_u + d^1_v)\times N}$. Similarly, we define $W_1 = \big[\begin{smallmatrix}
+Since we are interpreting each observation as row vectors, we can safely define the matrix $X = [X^u X^v]_{N \times (p^u + p^v)}$. To make sure the dimensions match, we define $A_0 = X^T$. We apply the same logic and define $A_1 = [A_1^u A_1^v]^T_{(d^1_u + d^1_v)\times N}$. We then define $W_1 = \big[\begin{smallmatrix}
   W_1^u & O\\
   O & W_1^v
-\end{smallmatrix}\big]_{(p^u + p^v) \times (d^1_u + d^1_v)}$ and $\vec{b_1} = [b_1^u b_1^v]^T$. We thus have that $$A_1 = W_1^TX + \vec{b_1}$$.
+\end{smallmatrix}\big]_{(p^u + p^v) \times (d^1_u + d^1_v)}$ and $\vec{b_1} = [b_1^u b_1^v]^T$. The diagonal matrix then allows us to write $$A_1 = W_1^TA_0 + \vec{b_1}$$.
 
 We repeat the same procedure to get
 $$
 A_2 = \sigma(W_2^T A_1 + \vec{b_2}),
 $$
-
+and finally,
 $$
 A_3 = \sigma_{out}(W_3^T A_2 + \vec{b_3}).
 $$
