@@ -13,11 +13,11 @@ hist(data$Carbs)
 hist(data$Fluid)
 hist(data$AveSpeed)
 boxplot(data)
-# From the summary and the boxplot, we see that the features have ranges that vary greatly.
+# From the histogram and the boxplot, we see that the features have ranges that vary greatly.
 # This is bad for neural networks. We would have needed to rescale the data if we were using 
 # the standard gradient descent. However, R's nlm uses a Newton like second order derivate optimisation
 # algorithm, which implicitly takes care of the scaling
-summary(data_scaled)
+
 par(mfrow = c(1, 1))
 
 softmax = function(Z_l){
@@ -41,8 +41,6 @@ softmax = function(Z_l){
 }
 Xu = cbind(data$AveSpeed, data$Sex)
 Xv = cbind(data$Carbs, data$Fluid)
-
-# We should not scale the response variable
 Y = cbind(data$Bombed)
 
 sig = function(A){
@@ -101,7 +99,7 @@ neural_net = function(Xu, Xv, m, theta, nu, Y=NULL){
   A1 = sig(t(W1) %*% A0 + b1 %*% t(ones))
   A2 = sig(t(W2) %*% A1 + b2 %*% t(ones))
   z_out = t(W3) %*% A2 + b3 %*% t(ones)
-  # Since this is a classification problem, we use logistic equation
+  # Since this is a classification problem, we use logistic function
   Y_hat = sig_out(z_out)
   pred = ifelse(Y_hat >= 0.5, 1, 0)
   E=NULL
@@ -167,7 +165,7 @@ library(colorspace)
 color.gradient = function(x, colors=c('coral','purple','skyblue1'), colsteps=25)
 {
   colpal = colorRampPalette(colors)
-  return( colpal(colsteps)[ findInterval(x, seq(min(x),max(x), length=colsteps)) ] )
+  return( colpal(colsteps)[findInterval(x, seq(min(x),max(x), length=colsteps)) ] )
 }
 
 
@@ -186,6 +184,9 @@ xxu2_male = rep(1, each = M^2)
 xxu2_female = rep(0, each=M^2)
 XXumale = cbind(xxu1, xxu2_male)
 XXufemale = cbind(xxu1, xxu2_female)
+
+response_male = neural_net(XXumale, XXv, 4, theta_best_nu, 0)
+response_female = neural_net(XXufemale, XXv, 4, theta_best_nu, 0)
 
 plot(xxv2 ~ xxv1, col=color.gradient(response_female$Y_hat), pch=16, cex=0.8, 
      xlab="Carbohydrate intake (gram,)", ylab="Fluid intake (litre)", 
